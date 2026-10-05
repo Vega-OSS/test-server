@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VegaDB Test Harness Dashboard</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --accent: #818cf8;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      line-height: 1.5;
+      padding: 24px;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .brand h1 { font-size: 1.6rem; font-weight: 700; color: #fff; }
+    .brand p { color: var(--text-muted); font-size: 0.9rem; }
+    .status-badges { display: flex; gap: 12px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: #0003;
+      border: 1px solid var(--border);
+    }
+    .badge-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot-green { background-color: var(--success); box-shadow: 0 0 8px var(--success); }
+    .dot-red { background-color: var(--danger); box-shadow: 0 0 8px var(--danger); }
+    .dot-yellow { background-color: var(--warning); box-shadow: 0 0 8px var(--warning); }
+    
+    .grid { display: grid; grid-template-columns: 340px 1fr; gap: 24px; }
+    @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Form Controls */
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; }
+    .suite-list { display: flex; flex-direction: column; gap: 8px; }
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      user-select: none;
+      padding: 6px 8px;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+    .checkbox-label:hover { background: #ffffff08; }
+    .checkbox-label input { width: 16px; height: 16px; accent-color: var(--primary); }
+    .suite-desc { font-size: 0.75rem; color: var(--text-muted); margin-left: 26px; }
+
+    select {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s, opacity 0.15s;
+    }
+    .btn-primary { background: var(--primary); color: #0f172a; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Summary Stats */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+    @media (max-width: 600px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+    .stat-box {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      text-align: center;
+    }
+    .stat-val { font-size: 1.4rem; font-weight: 700; }
+    .stat-lbl { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* Suite results */
+    .suite-card {
+      border: 1px solid var(--border);
+      background: #141e33;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .suite-header {
+      padding: 12px 16px;
+      background: #1b263b;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+    .suite-title { font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; }
+    .pill {
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .pill-passed { background: #14532d; color: #86efac; }
+    .pill-failed { background: #7f1d1d; color: #fca5a5; }
+    .pill-running { background: #78350f; color: #fde68a; }
+
+    .test-cases-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .test-cases-table th { text-align: left; padding: 8px 16px; background: #0f172a; color: var(--text-muted); font-size: 0.75rem; }
+    .test-cases-table td { padding: 8px 16px; border-top: 1px solid var(--border); }
+    .log-box {
+      background: #0a0f1d;
+      border-radius: 4px;
+      padding: 8px 12px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: #94a3b8;
+      margin-top: 6px;
+      white-space: pre-wrap;
+    }
+
+    /* History list */
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .history-item:hover { background: #ffffff05; }
+    .history-item:last-child { border-bottom: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <h1>VegaDB Test Server</h1>
+        <p>Autonomous test harness, assertion runner, and load tester for VegaDB</p>
+      </div>
+      <div class="status-badges">
+        <div class="badge" id="grpc-status-badge">
+          <span class="badge-dot dot-yellow" id="grpc-dot"></span>
+          <span>gRPC: <span id="grpc-text">Checking...</span></span>
+        </div>
+        <div class="badge" id="rest-status-badge">
+          <span class="badge-dot dot-yellow" id="rest-dot"></span>
+          <span>REST: <span id="rest-text">Checking...</span></span>
+        </div>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- Control Panel -->
+      <aside>
+        <div class="card">
+          <div class="card-title">Run Test Suites</div>
+          <div class="form-group">
+            <label>Select Suites</label>
+            <div class="suite-list" id="suites-checkbox-list">
+              <!-- populated by JS -->
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="proto-select">Transport Protocol</label>
+            <select id="proto-select">
+              <option value="both" selected>Both (gRPC & REST)</option>
+              <option value="grpc">gRPC Only (:50051)</option>
+              <option value="rest">REST Only (:8080)</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" id="run-btn" onclick="startTestRun()">
+            Run Selected Tests
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Recent Executions</div>
+          <div id="history-container">
+            <p style="color:var(--text-muted);font-size:0.85rem;">No test executions yet.</p>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Results Display -->
+      <main>
+        <div class="card">
+          <div class="card-title">
+            <span>Execution Summary</span>
+            <span class="pill pill-running" id="run-status-pill" style="display:none;">READY</span>
+          </div>
+
+          <div class="stats-row">
+            <div class="stat-box">
+              <div class="stat-val" id="stat-total">0</div>
+              <div class="stat-lbl">Total Tests</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val" id="stat-passed" style="color:var(--success);">0</div>
+              <div class="stat-lbl">Passed</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val" id="stat-failed" style="color:var(--danger);">0</div>
+              <div class="stat-lbl">Failed</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val" id="stat-duration">0ms</div>
+              <div class="stat-lbl">Elapsed</div>
+            </div>
+          </div>
+
+          <div id="suites-results-container">
+            <p style="color:var(--text-muted);text-align:center;padding:40px 0;">
+              Select test suites and click <strong>Run Selected Tests</strong> to execute.
+            </p>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULT_SUITES = [
+      { name: "smoke", desc: "Basic connectivity, ping, and lifecycle" },
+      { name: "crud", desc: "CRUD, empty/large values, binary keys, 404s" },
+      { name: "scan", desc: "Lexicographical range scans and limits" },
+      { name: "batch", desc: "Atomic multi-operation batches" },
+      { name: "concurrency", desc: "Parallel workers and linearizability" },
+      { name: "integrity", desc: "Randomized model checking vs in-memory oracle" },
+      { name: "stress", desc: "Burst load benchmark and latency percentiles" }
+    ];
+
+    function initSuitesList() {
+      const container = document.getElementById("suites-checkbox-list");
+      container.innerHTML = DEFAULT_SUITES.map(s => `
+        <div>
+          <label class="checkbox-label">
+            <input type="checkbox" name="suite" value="${s.name}" checked>
+            <span><strong>${s.name}</strong></span>
+          </label>
+          <div class="suite-desc">${s.desc}</div>
+        </div>
+      `).join("");
+    }
+
+    async function checkHealth() {
+      try {
+        const res = await fetch("/vega/health");
+        const data = await res.json();
+        
+        const grpcDot = document.getElementById("grpc-dot");
+        const grpcText = document.getElementById("grpc-text");
+        if (data.grpc_connected) {
+          grpcDot.className = "badge-dot dot-green";
+          grpcText.textContent = "Connected";
+        } else {
+          grpcDot.className = "badge-dot dot-red";
+          grpcText.textContent = data.grpc_error ? "Error" : "Disconnected";
+        }
+
+        const restDot = document.getElementById("rest-dot");
+        const restText = document.getElementById("rest-text");
+        if (data.rest_connected) {
+          restDot.className = "badge-dot dot-green";
+          restText.textContent = "Connected";
+        } else {
+          restDot.className = "badge-dot dot-red";
+          restText.textContent = data.rest_error ? "Error" : "Disconnected";
+        }
+      } catch (e) {
+        document.getElementById("grpc-dot").className = "badge-dot dot-red";
+        document.getElementById("grpc-text").textContent = "Down";
+        document.getElementById("rest-dot").className = "badge-dot dot-red";
+        document.getElementById("rest-text").textContent = "Down";
+      }
+    }
+
+    async function fetchHistory() {
+      try {
+        const res = await fetch("/api/v1/test/history");
+        const data = await res.json();
+        const container = document.getElementById("history-container");
+        if (!data || data.length === 0) {
+          container.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;">No test executions yet.</p>';
+          return;
+        }
+
+        container.innerHTML = data.slice(0, 8).map(run => {
+          const pillClass = run.status === "PASSED" ? "pill-passed" : (run.status === "FAILED" ? "pill-failed" : "pill-running");
+          const timeStr = new Date(run.started_at).toLocaleTimeString();
+          return `
+            <div class="history-item" onclick="loadRunDetails('${run.id}')">
+              <div>
+                <div><strong>${run.id}</strong></div>
+                <div style="color:var(--text-muted);font-size:0.75rem;">${timeStr} (${formatDuration(run.duration_ms)})</div>
+              </div>
+              <span class="pill ${pillClass}">${run.status}</span>
+            </div>
+          `;
+        }).join("");
+      } catch (e) {
+        console.error("fetch history error:", e);
+      }
+    }
+
+    function formatDuration(ns) {
+      if (!ns) return "0ms";
+      const ms = ns / 1000000;
+      if (ms < 1000) return `${ms.toFixed(1)}ms`;
+      return `${(ms / 1000).toFixed(2)}s`;
+    }
+
+    async function loadRunDetails(runId) {
+      try {
+        const res = await fetch(`/api/v1/test/history/${runId}`);
+        const run = await res.json();
+        renderRunResults(run);
+      } catch (e) {
+        console.error("load run details error:", e);
+      }
+    }
+
+    async function startTestRun() {
+      const selected = Array.from(document.querySelectorAll('input[name="suite"]:checked')).map(el => el.value);
+      if (selected.length === 0) {
+        alert("Please select at least one test suite.");
+        return;
+      }
+
+      const proto = document.getElementById("proto-select").value;
+      const runBtn = document.getElementById("run-btn");
+      const statusPill = document.getElementById("run-status-pill");
+
+      runBtn.disabled = true;
+      runBtn.textContent = "Running Tests...";
+      statusPill.style.display = "inline-block";
+      statusPill.className = "pill pill-running";
+      statusPill.textContent = "RUNNING";
+
+      try {
+        const res = await fetch("/api/v1/test/run", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            suites: selected,
+            protocol: proto
+          })
+        });
+        const summary = await res.json();
+        renderRunResults(summary);
+        fetchHistory();
+      } catch (e) {
+        alert("Test execution request failed: " + e.message);
+      } finally {
+        runBtn.disabled = false;
+        runBtn.textContent = "Run Selected Tests";
+      }
+    }
+
+    function renderRunResults(summary) {
+      const statusPill = document.getElementById("run-status-pill");
+      statusPill.style.display = "inline-block";
+      statusPill.className = summary.status === "PASSED" ? "pill pill-passed" : "pill pill-failed";
+      statusPill.textContent = summary.status;
+
+      document.getElementById("stat-total").textContent = summary.total;
+      document.getElementById("stat-passed").textContent = summary.passed;
+      document.getElementById("stat-failed").textContent = summary.failed;
+      document.getElementById("stat-duration").textContent = formatDuration(summary.duration_ms);
+
+      const container = document.getElementById("suites-results-container");
+      if (!summary.suites || summary.suites.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:20px;">No suite results.</p>';
+        return;
+      }
+
+      container.innerHTML = summary.suites.map(s => {
+        const sPill = s.status === "PASSED" ? "pill-passed" : "pill-failed";
+        const rows = s.cases.map(c => {
+          const cPill = c.status === "PASSED" ? "pill-passed" : "pill-failed";
+          const logsHtml = (c.logs && c.logs.length > 0) ? `<div class="log-box">${c.logs.join("\n")}</div>` : "";
+          const errHtml = c.error ? `<div class="log-box" style="color:var(--danger);">${c.error}</div>` : "";
+          return `
+            <tr>
+              <td>
+                <strong>${c.name}</strong>
+                ${errHtml}
+                ${logsHtml}
+              </td>
+              <td style="width:100px;">${formatDuration(c.duration_ms)}</td>
+              <td style="width:90px;"><span class="pill ${cPill}">${c.status}</span></td>
+            </tr>
+          `;
+        }).join("");
+
+        return `
+          <div class="suite-card">
+            <div class="suite-header">
+              <div class="suite-title">
+                <span>${s.name}</span>
+                <span style="font-size:0.75rem;color:var(--text-muted);font-weight:normal;">(${s.passed}/${s.total} passed)</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;">
+                <span style="font-size:0.8rem;color:var(--text-muted);">${formatDuration(s.duration_ms)}</span>
+                <span class="pill ${sPill}">${s.status}</span>
+              </div>
+            </div>
+            <table class="test-cases-table">
+              <thead>
+                <tr>
+                  <th>Test Case</th>
+                  <th>Duration</th>
+                  <th>Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // Startup
+    initSuitesList();
+    checkHealth();
+    fetchHistory();
+    setInterval(checkHealth, 5000);
+  </script>
+</body>
+</html>

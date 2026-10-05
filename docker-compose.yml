@@ -1,0 +1,32 @@
+services:
+  testserver:
+    build: .
+    image: testserver:dev
+    container_name: vega-testserver
+    ports:
+      - "8081:8081"
+    environment:
+      PORT: ":8081"
+      VEGA_GRPC_ADDR: "vegadb:50051"
+      VEGA_HTTP_ADDR: "http://vegadb:8080"
+      LOG_LEVEL: "info"
+    restart: unless-stopped
+    depends_on:
+      - vegadb
+
+  vegadb:
+    build:
+      context: ../KV_STORE
+    image: vegadb:dev
+    container_name: vegadb
+    ports:
+      - "50051:50051"
+      - "8080:8080"
+    environment:
+      VEGA_SYNC: "always"
+      VEGA_MEMTABLE_MB: "64"
+      VEGA_LOG_LEVEL: "info"
+    tmpfs:
+      - /tmp
+      - /data
+    restart: unless-stopped
